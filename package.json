@@ -1,0 +1,14 @@
+{
+  "name": "locationvideos_scrapper",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "scraper": "node scraper.js"
+  },
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "playwright": "^1.42.1"
+  }
+}

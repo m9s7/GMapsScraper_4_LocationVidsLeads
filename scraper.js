@@ -1,16 +1,15 @@
-console.log("ok");
-
 const { chromium } = require('playwright');
+const fs = require('fs');
 
-const URL = 'https://www.google.com/maps/search/Coffee/@44.8050099,20.431683,14z/data=!4m2!2m1!6e5?authuser=0&hl=en&entry=ttu'; // ex. 'https://www.google.com/maps/search/coffee/@36.3388078,-87.1570715,11z/data=!3m1!4b1?authuser=0&hl=en&entry=ttu'
-const OUTPUT_FILE = 'Beograd.csv'
+const URL = 'https://www.google.com/maps/search/Coffee/@50.8396655,4.3345015,14z/data=!3m1!4b1?authuser=0&hl=en&entry=ttu';
+const OUTPUT_FILE = 'Brussels.csv'
+const IS_HEADLESS = false;
 
 ;(async () => {
-    // your code here
 
     console.time("Execution Time");
 
-    const browser = await chromium.launch({ headless:true });
+    const browser = await chromium.launch({ headless:IS_HEADLESS });
     // const context = await browser.newContext(); // dont need cuz no random user agent, to add: https://youtu.be/nOQxJtfTUTM?t=969
     const page  = await browser.newPage({ bypassCSP: true });
 
@@ -38,8 +37,7 @@ const OUTPUT_FILE = 'Beograd.csv'
 
     const urls = await page.$$eval('a', links => links.map(link => link.href).filter( href=>href.startsWith('https://www.google.com/maps/place/') ));
 
-    // console.log(urls);
-    setTimeout(() => console.log("A Second"), 1000)
+    console.log(`${urls.length} URLs found`);
 
     const scrapePageData = async (url) => {
 
@@ -64,22 +62,43 @@ const OUTPUT_FILE = 'Beograd.csv'
         let address=addressElement?await newPage.evaluate(element=>element.textContent,addressElement):'';
         address=`"${address}"`;
 
-        const websiteElement=await newPage.$('a[data-tooltip="Open website"]')||await newPage.$('a[data-tooltip="Open menu link"]');
-        let website=websiteElement?await newPage.evaluate(element=>element.getAttribute('href'),websiteElement):'';
-        website=`"${website}"`;
-
         const phoneElement=await newPage.$('button[data-tooltip="Copy phone number"]');
         let phone=phoneElement?await newPage.evaluate(element=>element.textContent,phoneElement):'';
         phone=`"${phone}"`;
         url=`"${url}"`;
-    
+
+        const websiteElement=await newPage.$('a[data-tooltip="Open website"]')||await newPage.$('a[data-tooltip="Open menu link"]');
+        let website=websiteElement?await newPage.evaluate(element=>element.getAttribute('href'),websiteElement):'';
+        website=`"${website}"`;
+
+        let ig = `""`;
+        if (website != '""' && !website.includes("instagram.com"))
+        {
+            console.log(website.substring(1, website.length-1));
+            let websiteURL = website.substring(1, website.length-1); 
+            try {
+                await newPage.goto(websiteURL);
+                await newPage.evaluate(() => {
+                    window.scrollTo(0, document.body.scrollHeight);
+                  });
+
+                const instagramElement = await newPage.$('a[href*="https://www.instagram.com"]');
+                let instagram = instagramElement ? await newPage.evaluate( element => element.getAttribute('href'), instagramElement) : '';
+                ig = `"${instagram}"`;    
+            } catch (error) {
+                console.log(error);
+            }
+        } else if (website.includes("instagram.com"))
+        {
+            ig = website;
+            website = `""`;
+        }
+
         await newPage.close();
-        return{name,rating,reviews,address,website,phone,url};
+        return{name,rating,reviews,address,website, ig, phone,url};
     };
 
-    console.log(await scrapePageData( urls.at(0) ));
-
-    const batchSize = 2;
+    const batchSize = 3;
     const results = [];
     
     for( let i = 0; i < urls.length; i += batchSize )
@@ -92,12 +111,14 @@ const OUTPUT_FILE = 'Beograd.csv'
 
     await browser.close();
 
-    // Ok this works now:
-    // - go to websites that dont start with www.instagram
-    // - on those websites, find links that start with instagram or facebook
-    // Export to sheets and all done, categorize also
+    const csvHeader='Name,ig,Website,Rating,Reviews,Address,Phone,Url\n';
 
-    console.log(results);
+    const csvRows = results.map(r => `${r.name},${r.ig},${r.website},${r.rating},${r.reviews},${r.address},${r.phone},${r.url}`).join('\n');
+    fs.writeFileSync(OUTPUT_FILE, csvHeader + csvRows);
+    await browser.close();
+    console.timeEnd("Execution Time");
+
+    // console.log(results);
 
 })().catch((err) => {
     console.log(err);

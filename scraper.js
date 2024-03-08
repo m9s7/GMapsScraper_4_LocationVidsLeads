@@ -1,8 +1,8 @@
 const { chromium } = require('playwright');
 const fs = require('fs');
 
-const URL = 'https://www.google.com/maps/search/Coffee/@50.8396655,4.3345015,14z/data=!3m1!4b1?authuser=0&hl=en&entry=ttu';
-const OUTPUT_FILE = 'Brussels.csv'
+const URL = 'https://www.google.com/maps/search/Coffee/@53.3444544,-6.2772724,14z/data=!3m1!4b1?authuser=0&hl=en&entry=ttu';
+const OUTPUT_FILE = 'Dublin2.csv'
 const IS_HEADLESS = false;
 
 ;(async () => {
@@ -74,13 +74,15 @@ const IS_HEADLESS = false;
         let ig = `""`;
         if (website != '""' && !website.includes("instagram.com"))
         {
-            console.log(website.substring(1, website.length-1));
             let websiteURL = website.substring(1, website.length-1); 
             try {
                 await newPage.goto(websiteURL);
-                await newPage.evaluate(() => {
-                    window.scrollTo(0, document.body.scrollHeight);
-                  });
+                // await newPage.evaluate(() => {
+                //     window.scrollTo(0, document.body.scrollHeight);
+                //   });
+
+                await newPage.keyboard.down('End');
+                await newPage.keyboard.up('End');
 
                 const instagramElement = await newPage.$('a[href*="https://www.instagram.com"]');
                 let instagram = instagramElement ? await newPage.evaluate( element => element.getAttribute('href'), instagramElement) : '';
